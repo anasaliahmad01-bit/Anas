@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Message, Role, ChatSession, UserSettings } from './types';
+import { Message, Role, ChatSession, UserSettings, TextSize } from './types';
 import { sendMessageToGemini } from './services/geminiService';
 import { startChat } from './services/geminiService';
 import MessageBubble from './components/MessageBubble';
-import { SendIcon, PlusIcon, TrashIcon, MenuIcon, RobotIcon, ChatBubbleIcon, ImageIcon, XIcon, SettingsIcon, UploadIcon, EditIcon } from './components/Icons';
+import { SendIcon, PlusIcon, TrashIcon, MenuIcon, RobotIcon, ChatBubbleIcon, XIcon, SettingsIcon, UploadIcon, EditIcon, AttachmentIcon, FileIcon } from './components/Icons';
 
 const STORAGE_KEY = 'kurdgpt_sessions';
 const SETTINGS_KEY = 'kurdgpt_user_settings';
@@ -13,7 +13,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   name: 'تۆ',
   avatar: null,
   background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)',
-  isBackgroundImage: false
+  isBackgroundImage: false,
+  textSize: 'medium'
 };
 
 const PRESET_BACKGROUNDS = [
@@ -30,7 +31,7 @@ function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ data: string, name: string, type: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -62,7 +63,8 @@ function App() {
     const savedSettings = localStorage.getItem(SETTINGS_KEY);
     if (savedSettings) {
       try {
-        setUserSettings(JSON.parse(savedSettings));
+        // Merge with defaults to ensure all properties exist (e.g. textSize)
+        setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
       } catch (e) {
         console.error("Failed to parse settings");
       }
@@ -125,7 +127,7 @@ function App() {
     setMessages([initialMsg]);
     startChat([initialMsg]);
     setSidebarOpen(false);
-    setSelectedImage(null);
+    setSelectedFile(null);
   };
 
   const loadSession = (session: ChatSession) => {
@@ -133,7 +135,7 @@ function App() {
     setMessages(session.messages);
     startChat(session.messages);
     setSidebarOpen(false);
-    setSelectedImage(null);
+    setSelectedFile(null);
   };
 
   const deleteSession = (e: React.MouseEvent, id: string) => {
@@ -155,31 +157,38 @@ function App() {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setSelectedImage(reader.result as string);
+      reader.onloadend = () => {
+        setSelectedFile({
+          data: reader.result as string,
+          name: file.name,
+          type: file.type
+        });
+      };
       reader.readAsDataURL(file);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeImage = () => setSelectedImage(null);
+  const removeFile = () => setSelectedFile(null);
 
   const handleSend = async () => {
-    if ((!input.trim() && !selectedImage) || isLoading) return;
+    if ((!input.trim() && !selectedFile) || isLoading) return;
     const userText = input.trim();
-    const userImage = selectedImage || undefined;
+    const userFileData = selectedFile?.data;
+    
     setInput('');
-    setSelectedImage(null);
+    setSelectedFile(null);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     const userMessage: Message = {
       id: uuidv4(),
       role: Role.USER,
       text: userText,
-      image: userImage,
+      image: userFileData, // Storing data URL here (image or pdf)
       timestamp: Date.now()
     };
 
@@ -192,7 +201,7 @@ function App() {
     setMessages(prev => [...prev, initialModelMessage]);
 
     try {
-      const stream = sendMessageToGemini(userText, userImage);
+      const stream = sendMessageToGemini(userText, userFileData);
       let accumulatedText = '';
       for await (const chunk of stream) {
         accumulatedText += chunk;
@@ -325,6 +334,26 @@ function App() {
                   className="w-full p-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                   placeholder="ناوەکەت بنووسە"
                 />
+              </div>
+
+              {/* Text Size */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">قەبارەی نووسین</label>
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  {(['small', 'medium', 'large'] as TextSize[]).map((size) => (
+                    <button 
+                      key={size}
+                      onClick={() => setUserSettings(prev => ({...prev, textSize: size}))}
+                      className={`flex-1 py-2 text-sm rounded-md transition-all ${
+                        userSettings.textSize === size 
+                          ? 'bg-white shadow-sm text-blue-600 font-bold' 
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {size === 'small' ? 'بچووک' : size === 'medium' ? 'مامناوەند' : 'گەورە'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Background Settings */}
@@ -486,12 +515,26 @@ function App() {
         {/* Input Area */}
         <div className="p-4 md:p-6">
           <div className="max-w-3xl mx-auto">
-            {/* Image Preview */}
-            {selectedImage && (
-              <div className="mb-2 relative inline-block">
-                 <img src={selectedImage} alt="Preview" className="h-20 w-auto rounded-lg border border-gray-300 shadow-sm" />
+            {/* File Preview */}
+            {selectedFile && (
+              <div className="mb-2 relative inline-flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+                 {selectedFile.type.startsWith('image/') ? (
+                   <img src={selectedFile.data} alt="Preview" className="h-16 w-16 object-cover rounded-md" />
+                 ) : (
+                   <div className="h-16 w-16 flex items-center justify-center bg-red-50 rounded-md">
+                     <FileIcon className="w-8 h-8 text-red-500" />
+                   </div>
+                 )}
+                 
+                 <div className="flex flex-col pr-2">
+                    <span className="text-xs font-medium text-gray-700 truncate max-w-[150px]">{selectedFile.name}</span>
+                    <span className="text-xs text-gray-500">
+                      {selectedFile.type.startsWith('image/') ? 'وێنە' : 'فایل'}
+                    </span>
+                 </div>
+
                  <button 
-                  onClick={removeImage}
+                  onClick={removeFile}
                   className="absolute -top-2 -right-2 bg-gray-500 text-white rounded-full p-1 hover:bg-red-500 transition-colors shadow-sm"
                  >
                    <XIcon className="w-3 h-3" />
@@ -503,16 +546,16 @@ function App() {
               <input 
                 type="file" 
                 ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/jpeg,image/png,image/webp,image/heic"
+                onChange={handleFileUpload}
+                accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
                 className="hidden" 
               />
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="p-3 mb-1 ml-1 text-gray-400 hover:text-blue-500 transition-colors"
-                title="وێنە هاوپێچ بکە"
+                title="فایل هاوپێچ بکە"
               >
-                <ImageIcon className="w-6 h-6" />
+                <AttachmentIcon className="w-6 h-6" />
               </button>
 
               <textarea
@@ -528,9 +571,9 @@ function App() {
               <div className="p-2">
                 <button
                   onClick={handleSend}
-                  disabled={(!input.trim() && !selectedImage) || isLoading}
+                  disabled={(!input.trim() && !selectedFile) || isLoading}
                   className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
-                    (input.trim() || selectedImage) && !isLoading
+                    (input.trim() || selectedFile) && !isLoading
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md scale-100'
                       : 'bg-gray-100 text-gray-300 scale-95 cursor-not-allowed'
                   }`}

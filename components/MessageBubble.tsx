@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Message, Role, UserSettings } from '../types';
-import { UserIcon, RobotIcon, CopyIcon, CheckIcon, ThumbsUpIcon, ThumbsDownIcon } from './Icons';
+import { UserIcon, RobotIcon, CopyIcon, CheckIcon, ThumbsUpIcon, ThumbsDownIcon, FileIcon } from './Icons';
 
 interface MessageBubbleProps {
   message: Message;
@@ -28,6 +28,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, userSettings }) 
     } else {
       setFeedback(type);
     }
+  };
+
+  // Helper to determine attachment type
+  const getAttachmentType = (dataUrl: string) => {
+    if (dataUrl.startsWith('data:image')) return 'image';
+    if (dataUrl.startsWith('data:application/pdf')) return 'pdf';
+    return 'unknown';
   };
 
   // Simple formatter to handle code blocks and newlines without heavy libraries
@@ -70,6 +77,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, userSettings }) 
     ? (userSettings?.name || 'تۆ') 
     : 'ئەنەس';
 
+  const attachmentType = message.image ? getAttachmentType(message.image) : null;
+
+  // Determine text size class
+  const textSizeClass = {
+    small: 'text-sm',
+    medium: 'text-base',
+    large: 'text-lg'
+  }[userSettings?.textSize || 'medium'];
+
   return (
     <div className={`flex w-full ${isUser ? 'justify-start' : 'justify-start'} mb-6 px-4 group`}>
       <div className={`flex max-w-3xl w-full gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -96,18 +112,31 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, userSettings }) 
             {displayName}
           </div>
           
-          {/* Image Display */}
+          {/* Attachment Display */}
           {message.image && (
             <div className="mb-3">
-              <img 
-                src={message.image} 
-                alt="Uploaded content" 
-                className="max-w-full sm:max-w-sm rounded-lg border border-gray-200 shadow-sm" 
-              />
+              {attachmentType === 'image' && (
+                <img 
+                  src={message.image} 
+                  alt="Uploaded content" 
+                  className="max-w-full sm:max-w-sm rounded-lg border border-gray-200 shadow-sm" 
+                />
+              )}
+              {attachmentType === 'pdf' && (
+                <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg max-w-xs">
+                  <div className="bg-red-100 p-2 rounded-lg">
+                    <FileIcon className="w-6 h-6 text-red-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">فایلی PDF</p>
+                    <p className="text-xs text-gray-500">هاوپێچ کراوە</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          <div className={`prose prose-sm max-w-none text-base leading-relaxed whitespace-pre-wrap ${
+          <div className={`prose prose-sm max-w-none ${textSizeClass} leading-relaxed whitespace-pre-wrap ${
             message.isError ? 'text-red-500' : 'text-gray-800'
           }`}>
             {renderContent(message.text)}

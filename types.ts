@@ -24,9 +24,12 @@ export interface ChatState {
   isLoading: boolean;
 }
 
+export type TextSize = 'small' | 'medium' | 'large';
+
 export interface UserSettings {
   name: string;
   avatar: string | null; // Base64 string
   background: string; // CSS background value or Image Data URL
   isBackgroundImage: boolean;
+  textSize: TextSize;
 }

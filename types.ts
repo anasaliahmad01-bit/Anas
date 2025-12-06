@@ -1,3 +1,4 @@
+
 export enum Role {
   USER = 'user',
   MODEL = 'model'
@@ -25,6 +26,8 @@ export interface ChatState {
 }
 
 export type TextSize = 'small' | 'medium' | 'large';
+export type Theme = 'light' | 'dark';
+export type Voice = 'male' | 'female';
 
 export interface UserSettings {
   name: string;
@@ -32,4 +35,6 @@ export interface UserSettings {
   background: string; // CSS background value or Image Data URL
   isBackgroundImage: boolean;
   textSize: TextSize;
+  theme: Theme;
+  voice: Voice;
 }

@@ -15,6 +15,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -53,6 +54,12 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8; 
       }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #475569;
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
     </style>
   <script type="importmap">
 {
@@ -66,7 +73,7 @@
 }
 </script>
 </head>
-  <body class="h-screen overflow-hidden text-gray-900 bg-white">
+  <body class="h-screen overflow-hidden text-gray-900 bg-white dark:bg-gray-900">
     <div id="root"></div>
   </body>
 </html>

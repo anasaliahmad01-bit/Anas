@@ -1,5 +1,7 @@
 {
-  "name": "ANAS HERE",
+  "name": "ANAS99",
   "description": "The official AI assistant for Group A Administration students. Secure, helpful, and friendly.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

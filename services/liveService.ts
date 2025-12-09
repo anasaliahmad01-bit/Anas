@@ -18,6 +18,7 @@ class LiveService {
   private onStatusChange: ((status: string) => void) | null = null;
   private activeSources: Set<AudioBufferSourceNode> = new Set();
   private processorNode: ScriptProcessorNode | null = null;
+  private isMuted: boolean = false;
 
   constructor() {
     this.ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -61,6 +62,7 @@ class LiveService {
   ) {
     this.onStatusChange = onStatusChange;
     this.updateStatus('connecting');
+    this.isMuted = false;
 
     // Voice Selection Mapping
     // 'Fenrir' is deep/male, 'Kore' is clear/female
@@ -134,6 +136,10 @@ class LiveService {
     }
   }
 
+  setMute(mute: boolean) {
+    this.isMuted = mute;
+  }
+
   async sendText(text: string) {
     if (this.session) {
       const s = await this.session;
@@ -160,6 +166,8 @@ class LiveService {
     this.processorNode = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
 
     this.processorNode.onaudioprocess = (e) => {
+      if (this.isMuted) return; // Drop audio frames if muted
+
       const inputData = e.inputBuffer.getChannelData(0);
       
       // Convert Float32 to Int16 PCM
